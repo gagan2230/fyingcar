@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flying Car Racing Game</title>
+
+<style>
+    body {
+        margin: 0;
+        background: linear-gradient(to bottom, #87CEEB, #ffffff);
+        font-family: Arial, sans-serif;
+        text-align: center;
+    }
+
+    h1 {
+        margin: 10px;
+    }
+
+    #ui {
+        margin: 10px;
+    }
+
+    #score {
+        font-size: 20px;
+        margin: 10px;
+    }
+
+    button {
+        padding: 8px 16px;
+        font-size: 14px;
+        margin: 5px;
+        cursor: pointer;
+    }
+
+    /* 16:9 Game Area */
+    #gameArea {
+        position: relative;
+        width: 80vw;
+        max-width: 900px;
+        aspect-ratio: 16 / 9;
+        margin: 0 auto;
+        border: 3px solid black;
+        overflow: hidden;
+        background: linear-gradient(to bottom, #6ec6ff, #e0f7ff);
+    }
+
+    #player {
+        position: absolute;
+        width: 5%;
+        height: 15%;
+        background: red;
+        bottom: 5%;
+        left: 47%;
+        border-radius: 8px;
+    }
+
+    .obstacle {
+        position: absolute;
+        width: 5%;
+        height: 15%;
+        background: black;
+        top: -20%;
+        border-radius: 8px;
+    }
+</style>
+</head>
+<body>
+
+<h1>🚗 Flying Car Racing</h1>
+
+<div id="ui">
+    <div id="score">Score: 0</div>
+    <button id="startBtn">Start</button>
+    <button id="pauseBtn">Pause</button>
+</div>
+
+<div id="gameArea">
+    <div id="player"></div>
+</div>
+
+<script>
+const player = document.getElementById("player");
+const gameArea = document.getElementById("gameArea");
+const scoreDisplay = document.getElementById("score");
+const startBtn = document.getElementById("startBtn");
+const pauseBtn = document.getElementById("pauseBtn");
+
+let gameRunning = false;
+let isPaused = false;
+let score = 0;
+let obstacleSpeed = 3;
+let obstacleInterval;
+let playerXPercent = 47;
+
+// 🎵 Web Audio API for sounds
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function playBeep(freq, duration) {
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+
+    oscillator.frequency.value = freq;
+    oscillator.type = "square";
+
+    oscillator.start();
+    gainNode.gain.exponentialRampToValueAtTime(
+        0.0001,
+        audioCtx.currentTime + duration
+    );
+    oscillator.stop(audioCtx.currentTime + duration);
+}
+
+// Move Player
+document.addEventListener("keydown", function(event) {
+    if (!gameRunning || isPaused) return;
+
+    if (event.key === "ArrowLeft" && playerXPercent > 0) {
+        playerXPercent -= 3;
+    }
+    if (event.key === "ArrowRight" && playerXPercent < 95) {
+        playerXPercent += 3;
+    }
+
+    player.style.left = playerXPercent + "%";
+});
+
+function createObstacle() {
+    const obstacle = document.createElement("div");
+    obstacle.classList.add("obstacle");
+    obstacle.style.left = Math.random() * 95 + "%";
+    gameArea.appendChild(obstacle);
+
+    let obstacleTop = -20;
+
+    function moveObstacle() {
+        if (!gameRunning) {
+            obstacle.remove();
+            return;
+        }
+
+        if (!isPaused) {
+            obstacleTop += obstacleSpeed;
+            obstacle.style.top = obstacleTop + "%";
+
+            const playerRect = player.getBoundingClientRect();
+            const obstacleRect = obstacle.getBoundingClientRect();
+
+            // Collision detection
+            if (
+                playerRect.left < obstacleRect.right &&
+                playerRect.right > obstacleRect.left &&
+                playerRect.top < obstacleRect.bottom &&
+                playerRect.bottom > obstacleRect.top
+            ) {
+                playBeep(150, 0.5); // Crash sound
+                endGame();
+            }
+
+            // Score increase
+            if (obstacleTop > 100) {
+                obstacle.remove();
+                score++;
+                scoreDisplay.textContent = "Score: " + score;
+                playBeep(600, 0.1); // Win sound
+                return;
+            }
+        }
+
+        requestAnimationFrame(moveObstacle);
+    }
+
+    requestAnimationFrame(moveObstacle);
+}
+
+function startGame() {
+    if (gameRunning) return;
+
+    gameRunning = true;
+    isPaused = false;
+    score = 0;
+    scoreDisplay.textContent = "Score: 0";
+    playerXPercent = 47;
+    player.style.left = playerXPercent + "%";
+
+    obstacleInterval = setInterval(createObstacle, 1500);
+}
+
+function endGame() {
+    gameRunning = false;
+    clearInterval(obstacleInterval);
+    alert("Game Over! Final Score: " + score);
+}
+
+function togglePause() {
+    if (!gameRunning) return;
+    isPaused = !isPaused;
+    pauseBtn.textContent = isPaused ? "Resume" : "Pause";
+}
+
+startBtn.addEventListener("click", startGame);
+pauseBtn.addEventListener("click", togglePause);
+</script>
+
+</body>
+</html>
